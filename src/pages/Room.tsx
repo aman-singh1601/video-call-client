@@ -8,7 +8,8 @@ const Room = () => {
   //@ts-ignore
   const {socket} = useSocket();
 
-  const [roomId, setRoomId] = useState<String | null>(null);
+  // const [roomId, setRoomId] = useState<String | null>(null);
+  const [remoteEmail, setRemoteEmail] = useState<String | null>(null);
   const [myStream, setMyStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
@@ -21,6 +22,7 @@ const Room = () => {
     setMyStream(stream);
 
   },[]);
+
   useEffect( () => {
     handleCreateStream();
   },[]);
@@ -33,7 +35,7 @@ const Room = () => {
   //       console.log(res);
   //   }
   // },[myStream]);
-  const sendStream = ()=> {
+  const sendStream = () => {
     if(myStream)
     for(let track of myStream?.getTracks()) {
         console.log("sending track: ", track);
@@ -47,20 +49,27 @@ const Room = () => {
   const handleNewUserJoined =  useCallback( async ({email}:{email: string}) => {
         console.log("New user joined : " + email);
 
-        //removing existing saved detail of new user joined
-        if(localStorage.getItem("remoteUserEmail"))
-          localStorage.removeItem("remoteUserEmail");
+        setRemoteEmail(email);
 
-        localStorage.setItem("remoteUserEmail", email);
-        const offer = await peerService.createOffer();
-        socket.emit("event:call-user", {email, offer});
-  },[socket]);
+  },[]);
+
+  const handleCallUser = useCallback( async () => {
+
+    const offer = await peerService.createOffer();
+    console.log(remoteEmail);
+    socket.emit("event:call-user", {email: remoteEmail, offer});
+
+  },[socket, remoteEmail]);
 
   const handleIncommingCall = useCallback(async ({email, offer}:{email: string, offer: RTCSessionDescriptionInit}) => {
+
     console.log("incomming call: offer ", offer);
     console.log("incomming call: email: ", email);
+
+    setRemoteEmail(email);
+
     const ans = await peerService.getAnswer({offer});
-    // setRemoteEmail(email);
+
     //call accepted
     socket.emit("event:call-accepted", {email, ans});
     //call declined
@@ -83,14 +92,12 @@ const Room = () => {
   const handleNegoNeeded = useCallback(async () => {
     const offer = await peerService.createOffer();
 
-    if(localStorage.getItem("remoteUserEmail")){
-      let email = localStorage.getItem("remoteUserEmail");
-      console.log("localstorage email:", email);
-      socket.emit("peer:nego:needed", {to: email, offer});
-    }
+      console.log(" email:", remoteEmail);
+      socket.emit("peer:nego:needed", {to: remoteEmail, offer});
 
 
-  },[socket]);
+
+  },[socket, remoteEmail]);
 
   const handleNegoIncomming = useCallback(async ({from, offer}:{from: String, offer: RTCSessionDescriptionInit}) => {
     console.log("Nego incomming", offer);
@@ -105,33 +112,22 @@ const Room = () => {
   },[]);
 
 
-  const onTrack = (e: any) => {
+  const onTrack = useCallback((e: any) => {
     console.log("got Tracks", e.streams);
     setRemoteStream(e.streams[0]);
-  } 
+  } ,[]);
 
 
   useEffect(() => {
     peerService.peer?.addEventListener("negotiationneeded", handleNegoNeeded);
+    peerService.peer?.addEventListener("track", onTrack)
     return () => {
       peerService.peer?.removeEventListener("negotiationneeded", handleNegoNeeded);
+      peerService.peer?.addEventListener("track", onTrack)
     }
-  },[handleNegoNeeded, peerService]);
+  },[handleNegoNeeded, peerService, onTrack]);
 
 
-
-
-  useEffect(() => {
-    // peerService.peer?.addEventListener("track", async e => {
-    //     console.log("got Tracks");
-    //     const remStream = e.streams;
-    //     console.log(remStream);
-    //     setRemoteStream(remStream[0]);
-    // })
-    peerService.peer?.addEventListener("track", onTrack)
-
-
-  },[]);
 
   // console.log(remoteStream);
   //for exchanging SDP
@@ -156,6 +152,7 @@ const Room = () => {
     <div>
       <div>
         <Button onClick={sendStream}>send Stream</Button>
+        <Button onClick={handleCallUser}>Call User</Button>
       </div>
       <h3>My Stream</h3>
       {myStream && 

@@ -51,11 +51,11 @@ const Landing = () => {
                     <form>
                         <div className="grid w-full items-center gap-4">
                             <div className="flex flex-col items-start space-y-1.5">
-                                <Label htmlFor="name">Email</Label>
+                                <Label htmlFor="email">Email</Label>
                                 <Input id="email" onChange={(e) => setEmail(e.target.value)} placeholder="example@gmail.com" />
                             </div>
                             <div className="flex flex-col items-start space-y-1.5">
-                                <Label htmlFor="framework">Room Name</Label>
+                                <Label htmlFor="roomid">Room Name</Label>
                                 <Input id="roomid" onChange={(e) => setRoomid(e.target.value)} placeholder="loremipsum" />
                             </div>
                         </div>
